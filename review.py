@@ -10,8 +10,8 @@ import json
 import urllib.request
 
 MODEL = os.environ.get("MODEL", "minimax/minimax-m2.5")
-MAX_TOKENS = 300
-MAX_DIFF_LINES = 500
+MAX_TOKENS = 1000
+MAX_DIFF_LINES = 1000
 
 def load_diff(path="diff.txt"):
     try:
