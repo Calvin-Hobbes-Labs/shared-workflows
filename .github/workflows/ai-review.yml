@@ -44,6 +44,7 @@ jobs:
         if: steps.diff.outputs.skip != 'true'
         env:
           KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           python3 review.py > review.txt 2>&1 || echo "REVIEW_FAILED" > review.txt
           if [ ! -s review.txt ] || grep -qi "MISSING_API_KEY\|REVIEW_SYSTEM_FAILURE" review.txt; then
@@ -52,5 +53,7 @@ jobs:
 
       - name: Post comment
         if: steps.diff.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} --body "$(cat review.txt)" --repo ${{ github.repository }}
