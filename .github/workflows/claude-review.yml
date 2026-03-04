@@ -1,0 +1,56 @@
+name: Claude Code Review
+
+on:
+  workflow_call:
+    secrets:
+      OPENROUTER_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get diff
+        id: diff
+        run: |
+          base=$(echo ${{ github.event.pull_request.base.ref }})
+          git fetch origin $base
+          git diff origin/$base...HEAD > diff.txt
+          lines=$(wc -l < diff.txt)
+          echo "lines=$lines" >> $GITHUB_OUTPUT
+          if [ "$lines" -eq 0 ]; then
+            echo "No changes to review"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download review script
+        if: steps.diff.outputs.skip != 'true'
+        run: |
+          curl -sL https://raw.githubusercontent.com/Calvin-Hobbes-Labs/shared-workflows/main/review.py -o review.py
+          chmod +x review.py
+
+      - name: Run review
+        if: steps.diff.outputs.skip != 'true'
+        env:
+          KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          python3 review.py > review.txt 2>&1 || echo "REVIEW_FAILED" > review.txt
+          if [ ! -s review.txt ] || grep -qi "MISSING_API_KEY\|REVIEW_SYSTEM_FAILURE" review.txt; then
+            echo "**Code Review:** Failed to generate review. Check secrets." > review.txt
+          fi
+
+      - name: Post comment
+        if: steps.diff.outputs.skip != 'true'
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat review.txt)" --repo ${{ github.repository }}
