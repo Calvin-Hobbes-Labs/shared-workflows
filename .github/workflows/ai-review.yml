@@ -5,8 +5,6 @@ on:
     secrets:
       OPENROUTER_API_KEY:
         required: true
-      GITHUB_TOKEN:
-        required: true
 
 permissions:
   contents: read
@@ -54,7 +52,5 @@ jobs:
 
       - name: Post comment
         if: steps.diff.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} --body "$(cat review.txt)" --repo ${{ github.repository }}
